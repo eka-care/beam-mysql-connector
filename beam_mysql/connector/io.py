@@ -55,6 +55,7 @@ class WriteToMySQL(PTransform):
         password: Union[str, ValueProvider],
         port: Union[int, ValueProvider] = 3306,
         batch_size: int = 1000,
+        do_upsert: bool = False
     ):
         super().__init__()
         self._host = host
@@ -64,11 +65,12 @@ class WriteToMySQL(PTransform):
         self._password = password
         self._port = port
         self._batch_size = batch_size
+        self.do_upsert = do_upsert
 
     def expand(self, pcoll: PCollection) -> PCollection:
         return pcoll | beam.ParDo(
             _WriteToMySQLFn(
-                self._host, self._database, self._table, self._user, self._password, self._port, self._batch_size
+                self._host, self._database, self._table, self._user, self._password, self._port, self._batch_size, self.do_upsert
             )
         )
 
@@ -85,6 +87,7 @@ class _WriteToMySQLFn(beam.DoFn):
         password: Union[str, ValueProvider],
         port: Union[int, ValueProvider],
         batch_size: int,
+        do_upsert: bool=False
     ):
         super().__init__()
         self._host = host
@@ -102,10 +105,11 @@ class _WriteToMySQLFn(beam.DoFn):
             "password": self._password,
             "port": self._port,
         }
+        self.do_upsert = do_upsert
 
     def start_bundle(self):
         self._build_value()
-        self._queries = []
+        self._values_batch = []
 
     def process(self, element: Dict, *args, **kwargs):
         columns = []
@@ -115,25 +119,25 @@ class _WriteToMySQLFn(beam.DoFn):
             values.append(value)
 
         column_str = ", ".join(columns)
-        value_str = ", ".join(
-            [
-                f"{'NULL' if value is None else value}" if isinstance(value, (type(None), int, float)) else f"'{value}'"
-                for value in values
-            ]
-        )
+        value_str = '%s' * len(values)
 
-        query = f"INSERT INTO {self._config['database']}.{self._table}({column_str}) VALUES({value_str});"
+        query = f"INSERT INTO {self._config['database']}.{self._table} ({column_str}) VALUES ({value_str})"
+        if self.do_upsert:
+            update_str = ", ".join(
+                [f"{column} = VALUES({column})" for column in columns]
+            )
+            query += f" ON DUPLICATE KEY UPDATE {update_str};"
 
-        self._queries.append(query)
+        self._values_batch.append(values)
 
-        if len(self._queries) > self._batch_size:
-            self._client.record_loader("\n".join(self._queries))
-            self._queries.clear()
+        if len(self._values_batch) > self._batch_size:
+            self._client.record_loader(query, self._values_batch)
+            self._values_batch.clear()
 
     def finish_bundle(self):
-        if len(self._queries):
-            self._client.record_loader("\n".join(self._queries))
-            self._queries.clear()
+        if len(self._values_batch):
+            self._client.record_loader("\n".join(self._values_batch))
+            self._values_batch.clear()
 
     def _build_value(self):
         for k, v in self._config.items():

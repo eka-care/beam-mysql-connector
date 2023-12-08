@@ -15,7 +15,8 @@ class WriteRecordsOptions(PipelineOptions):
         parser.add_value_provider_argument("--table", dest="table", default="tests")
         parser.add_value_provider_argument("--user", dest="user", default="root")
         parser.add_value_provider_argument("--password", dest="password", default="root")
-        parser.add_value_provider_argument("--batch_size", dest="batch_size", default=0)
+        parser.add_value_provider_argument("--batch_size", dest="batch_size", default=1)
+        parser.add_value_provider_argument("--do_upsert", dest="do_upsert", default=False)
 
 
 def run():
@@ -31,6 +32,7 @@ def run():
         password=options.password,
         port=options.port,
         batch_size=options.batch_size,
+        do_upsert=options.do_upsert
     )
 
     (
