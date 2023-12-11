@@ -119,7 +119,7 @@ class _WriteToMySQLFn(beam.DoFn):
             values.append(value)
 
         column_str = ", ".join(columns)
-        value_str = '%s' * len(values)
+        value_str = '%s' + (',%s' * (len(values)-1))
 
         query = f"INSERT INTO {self._config['database']}.{self._table} ({column_str}) VALUES ({value_str})"
         if self.do_upsert:

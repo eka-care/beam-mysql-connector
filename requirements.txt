@@ -1,0 +1,2 @@
+apache-beam>=2.51.0
+mysql-connector-python>=8.0.0

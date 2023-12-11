@@ -53,10 +53,7 @@ PACKAGE_EMAIL = "esakik.work@gmail.com"
 PACKAGE_KEYWORDS = "apache beam mysql connector"
 PACKAGE_LONG_DESCRIPTION = README
 
-REQUIRED_PACKAGES = [
-    "apache-beam>=2.51.0",
-    "mysql-connector-python>=8.0.0",
-]
+REQUIRED_PACKAGES = list(filter(None, list(map(lambda s: s.strip(), open('requirements.txt').readlines()))))
 
 setup(
     name=PACKAGE_NAME,
