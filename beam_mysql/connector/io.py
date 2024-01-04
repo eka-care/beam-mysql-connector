@@ -122,21 +122,23 @@ class _WriteToMySQLFn(beam.DoFn):
         value_str = '%s' + (',%s' * (len(values)-1))
 
         query = f"INSERT INTO {self._config['database']}.{self._table} ({column_str}) VALUES ({value_str})"
+        self.query = query
         if self.do_upsert:
             update_str = ", ".join(
                 [f"{column} = VALUES({column})" for column in columns]
             )
             query += f" ON DUPLICATE KEY UPDATE {update_str};"
+            self.query = query
 
         self._values_batch.append(values)
 
-        if len(self._values_batch) > self._batch_size:
+        if len(self._values_batch) >= self._batch_size:
             self._client.record_loader(query, self._values_batch)
             self._values_batch.clear()
 
     def finish_bundle(self):
         if len(self._values_batch):
-            self._client.record_loader("\n".join(self._values_batch))
+            self._client.record_loader(self.query, self._values_batch)
             self._values_batch.clear()
 
     def _build_value(self):

@@ -147,8 +147,6 @@ class MySQLClient:
             cur = conn.cursor()
 
             try:
-                print('query--->', query)
-                print('paramters--->', parameters)
                 cur.executemany(query, parameters)
                 conn.commit()
                 logger.info(f"Successfully execute query: {query}")
