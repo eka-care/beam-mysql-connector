@@ -149,7 +149,7 @@ class MySQLClient:
             try:
                 cur.executemany(query, parameters)
                 conn.commit()
-                logger.info(f"Successfully execute query: {query}")
+                # logger.info(f"Successfully execute query: {query}")
             except MySQLConnectorError as e:
                 conn.rollback()
                 raise MySQLClientError(f"Failed to execute query: {query}, Raise exception: {e}")
